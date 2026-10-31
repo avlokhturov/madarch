@@ -19,7 +19,7 @@ The branch replaces that reader with one parse of the Markdown tree per page and
 The owner's rule forbids a regular expression or a hardcoded word list over document text, and the editorial checks already read the Markdown tree. Making that tree the one reader removes the disagreement between the editorial pass and the canonical writer: a navigation label cannot carry an unchecked claim, a code span is not a footnote, and the platform's segmenter decides a sentence boundary in the language the page is written in. Reading each page once also removes the per-call reparsing and quadratic scans the old shape needed.
 
 ## Changes to requirements
-- product-wiki/acp-agent: agents whose runtime owns access use machine-given launch settings and the runtime environment allowlist only; missing settings refuse launch without fallback.
+- product-wiki/acp-agent (changed): an agent whose access its runtime owns (prime-agent) is launched from machine-given settings, gets only the runtime allowlist environment, and is refused with missing settings named and no agent/provider fallback. Scenarios: `acp-machine-owned-runtime`, `prime-agent runtime configuration uses configured provider and model with only runtime allowlisted environment`, `prime-agent runtime configuration refuses absent runtime configuration without falling back`, `prime-agent probe launches the configured ACP binary with daemon runtime options`.
 
 ## Preserved contracts
 - product-wiki/acp-agent: other ACP agents and protocol behavior remain unchanged.
