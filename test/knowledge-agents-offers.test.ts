@@ -5,7 +5,7 @@ import { join } from 'node:path';
 import { makeUnitAgent, offers, WRITER_AGENTS } from '../src/knowledge/agents.js';
 
 test('the wiki offers the four agents that can take the writer\'s tools and none that cannot', () => {
-  expect(WRITER_AGENTS).toEqual(['claude-code', 'codex', 'opencode', 'omp']);
+  expect(WRITER_AGENTS).toEqual(['claude-code', 'codex', 'opencode', 'omp', 'prime-agent']);
   // Pi is not offered: its adapter hands no MCP server to pi (see its catalogue entry).
   expect(WRITER_AGENTS).not.toContain('pi');
 });
@@ -19,7 +19,7 @@ test('OpenCode and omp are started as `acp` mode of their own program, found on 
     }
     const env = { HOME: join(root, 'home'), MADARCH_HOME: join(root, 'madarch'), PATH: root };
     const shown = offers(env);
-    expect(shown.map((offer) => [offer.id, offer.installed])).toEqual([['claude-code', false], ['codex', false], ['opencode', true], ['omp', true]]);
+    expect(shown.map((offer) => [offer.id, offer.installed])).toEqual([['claude-code', false], ['codex', false], ['opencode', true], ['omp', true], ['prime-agent', false]]);
     const missing = shown.find((offer) => offer.id === 'codex')!;
     expect(missing.install?.package).toBe('@agentclientprotocol/codex-acp');
     for (const id of ['opencode', 'omp']) {

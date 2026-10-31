@@ -29,6 +29,7 @@ import { delimiter, join } from 'node:path';
 import { madarchHome, homeFromEnv, type DraftEnv } from '../product/home.js';
 import { AGENT_API_KEY_ENV } from '../product/fill-agents.js';
 import { connectAcpAgent, resolveExecutable, type AcpConnection } from './acp.js';
+import { primeRuntime } from './prime-runtime.js';
 
 /**
  * Where an agent keeps its own sign-in on this machine. Only the presence of
@@ -152,6 +153,14 @@ export const ACP_ADAPTERS: readonly AcpAdapterCatalogueEntry[] = [
     },
     login: { kind: 'files', paths: ['.local/share/opencode/auth.json'], detail: 'OpenCode signs itself in through opencode auth login and keeps that sign-in in .local/share/opencode/auth.json under the person\'s home; madarch checks only that the file is there, never what it holds.' },
     evidence: 'Measured: `opencode acp` ("start ACP (Agent Client Protocol) server") installed from opencode-ai 1.19.4 answers an initialize handshake with protocolVersion 1, agentInfo OpenCode 1.19.4, mcpCapabilities http and sse true, and the auth method opencode-login (read 2026-10-23, madarch-m38l.4). OpenCode is in the ACP registry.',
+  },
+  {
+    id: 'prime-agent',
+    label: 'prime-agent',
+    launches: [{ binary: 'prime-agent', args: [] }],
+    install: { kind: 'bundled', program: 'prime-agent', note: 'Install prime-agent on this machine from its trusted distribution.' },
+    login: { kind: 'none', detail: 'prime-agent uses the machine-owned daemon runtime configured by MADARCH_PRIME_RUNTIME_READY; madarch reads only its allowlisted environment and never reads or stores credentials.' },
+    evidence: 'prime-agent speaks ACP with --mode acp and connects to a machine-owned daemon socket. Its provider and model are configured explicitly; no fallback is used.',
   },
   {
     id: 'pi',
@@ -336,11 +345,18 @@ export async function probeAcpAgents(options: { cwd?: string; path?: string; tim
   const pathValue = options.path ?? env.PATH ?? '';
   const home = options.home ?? homeFromEnv(env);
   const cwd = options.cwd ?? process.cwd();
+  let prime: ReturnType<typeof primeRuntime> | undefined;
   const agentsFolder = madarchAgentsFolder(env, home);
   const findings: AcpProbeFinding[] = [];
   for (const entry of options.adapters ?? ACP_ADAPTERS) {
+    if (entry.id === 'prime-agent') {
+      try { prime = primeRuntime(env); } catch (error) {
+        findings.push({ id: entry.id, label: entry.label, status: 'failed', detail: error instanceof Error ? error.message : String(error), login: { state: 'unknown', detail: entry.login.detail }, install: acpInstallOffer(entry, env, home), evidence: entry.evidence });
+        continue;
+      }
+    }
     const install = acpInstallOffer(entry, env, home);
-    const login = acpLoginState(entry, home);
+    const login = entry.id === 'prime-agent' ? { state: 'unknown' as const, detail: entry.login.detail } : acpLoginState(entry, home);
     // madarch's own install of an adapter comes first: it is the version
     // pinned here, while whatever a person put on PATH may be another one.
     const ownBin = acpAdapterBinFolder(acpAgentFolder(entry, env, home));
@@ -366,8 +382,9 @@ export async function probeAcpAgents(options: { cwd?: string; path?: string; tim
       continue;
     }
     let connection: AcpConnection | undefined;
+    const primeArgs = entry.id === 'prime-agent' ? ['--mode', 'acp', '--offline', '--daemon-socket', prime!.socket, '--provider', prime!.provider, '--model', prime!.model, '--cwd', cwd] : launch.args;
     try {
-      connection = await connectAcpAgent({ id: entry.id, command: launch.executable!, args: launch.args }, { cwd, timeoutMs: options.timeoutMs, env: { PATH: searchPath } });
+      connection = await connectAcpAgent({ id: entry.id, command: launch.executable!, args: primeArgs }, { cwd, timeoutMs: options.timeoutMs, env: entry.id === 'prime-agent' ? prime!.env : { PATH: searchPath } });
       const initialized = await connection.initialize();
       const agentName = initialized.agentInfo?.name ?? entry.label;
       const agentVersion = initialized.agentInfo?.version;
@@ -379,7 +396,7 @@ export async function probeAcpAgents(options: { cwd?: string; path?: string; tim
         detail: `${entry.label} connects over ACP: ${launch.binary} at ${launch.executable} answered initialize with protocol version ${initialized.protocolVersion}${agentVersion === undefined ? '' : ` (agent ${agentName} ${agentVersion})`}; no prompt was sent.`,
         executable: launch.executable!,
         foundIn: launch.foundIn,
-        args: launch.args,
+        args: primeArgs,
         protocolVersion: initialized.protocolVersion,
         agentInfo: initialized.agentInfo,
         authMethods: initialized.authMethods.map((method) => method.id),
@@ -396,7 +413,7 @@ export async function probeAcpAgents(options: { cwd?: string; path?: string; tim
         detail: `${entry.label} has an ACP adapter at ${launch.executable} but it did not connect: ${error instanceof Error ? error.message : String(error)}`,
         executable: launch.executable!,
         foundIn: launch.foundIn,
-        args: launch.args,
+        args: primeArgs,
         // An adapter that is there and does not connect is one madarch offers
         // to install again: one install of the pinned version is what fixes it.
         install,
