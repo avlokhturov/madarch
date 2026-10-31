@@ -1,50 +1,46 @@
-# Run knowledge fills with prime-agent through its machine runtime
+# Prime-agent ACP writer using machine-owned runtime access
 
 Change: madarch-ztyq.13
-Base: 96b0558801d17eacdeecd2a604351aca89a62ee2
+Base: 6f75bbed052101510c12d391d22015518082436a
 Tasks: madarch-ztyq.13
 Kind: behavior
 
 ## Intent
-`src/writer/sentences.ts` read page text with regular expressions and a fixed abbreviation list, and every caller inherited that reading: page validation and canonicalisation in `src/writer/format.ts`, produced statement counts and search in `src/writer/tools.ts`, answers in `src/writer/answers.ts`, the writer's domain declarations in `src/writer/run.ts`, and the graph index's statements in `src/knowledge/index/page.ts`. A claim hidden in a navigation link label escaped validation, an ordinary sentence ending in a short word was glued to the next, a footnote-shaped literal inside inline code was treated as a reference, and the sentence split depended on English abbreviations rather than the wiki's language.
-
-The branch replaces that reader with one parse of the Markdown tree per page and sentence boundaries from `Intl.Segmenter` in the page's language. It removes the abbreviation list and the regular expressions over document text, keeps code-span literals in the plain sentence, and reads definitions, links and reference runs from node spans. The page format and its canonical bytes stay what they were for unchanged text: the migration fixture writes pages produced by the previous writer through `previous` and compares their named keys, text and grounds.
+Allow the product wiki writer to use prime-agent over ACP when the machine supplies its runtime-ready file, provider, and model. Madarch validates runtime readiness and launches the configured agent without reading or copying credentials. The machine runtime owns gateway access.
 
 ## Out of scope
-- Changing the page format, its front matter or its canonical key order.
-- Changing which statements are grounded; the same grounding rule now sees the claims the old reader hid.
-- Rewriting the statements of pages whose files did not change; the migration test holds their keys stable.
-
-## Rationale
-The owner's rule forbids a regular expression or a hardcoded word list over document text, and the editorial checks already read the Markdown tree. Making that tree the one reader removes the disagreement between the editorial pass and the canonical writer: a navigation label cannot carry an unchecked claim, a code span is not a footnote, and the platform's segmenter decides a sentence boundary in the language the page is written in. Reading each page once also removes the per-call reparsing and quadratic scans the old shape needed.
+- Installing, restarting, or managing the machine-owned prime-agent daemon.
+- Reading or storing gateway credentials or secrets.
+- Trying a different agent or provider when the runtime is unavailable.
+- Changing ACP behavior for other writer agents.
 
 ## Changes to requirements
-- product-wiki/acp-agent (changed): an agent whose access its runtime owns (prime-agent) is launched from machine-given settings, gets only the runtime allowlist environment, and is refused with missing settings named and no agent/provider fallback. Scenarios: `acp-machine-owned-runtime`, `prime-agent runtime configuration uses configured provider and model with only runtime allowlisted environment`, `prime-agent runtime configuration refuses absent runtime configuration without falling back`, `prime-agent probe launches the configured ACP binary with daemon runtime options`.
+- product-wiki/acp-agent (changed): an agent whose access its runtime owns is launched from machine-given settings, receives only its runtime allowlist environment, and is refused with missing settings named and no agent/provider fallback. Scenarios: `acp-machine-owned-runtime`, `prime-agent runtime configuration uses configured provider and model with only runtime allowlisted environment`, `prime-agent runtime configuration refuses absent runtime configuration without falling back`, `prime-agent probe launches the configured ACP binary with daemon runtime options`.
+
+Complete proposed capability text: `capabilities/product-wiki.md`. It is the base capability at `Base:` with only the `acp-agent` requirement and its scenario extended.
 
 ## Preserved contracts
-- product-wiki/acp-agent: other ACP agents and protocol behavior remain unchanged.
 
 ## Coverage
 - product-wiki/acp-agent: test
 
 ## Where it is seen
-
-Kind: internal
-Place: the writer's page validation, canonical form, tools and the graph index's statements
-Reason: a page whose text did not change is written byte-identically and its statement keys stay the same; what a reader sees changes only where the old reader was wrong, and the review's failing inputs are held by the sentence-reader tests.
-
-1. Open a product wiki whose page text did not change and see the same rendered page; the migration fixture rewrites pages produced by the previous writer through `previous` and compares the body bytes, named keys, text and grounds.
-2. Run the sentences of `The flag is on.[^flag] Restart it.[^restart]` through the reader and see two statements rather than one; a claim in `See also [delivery takes two days](...)` is refused as ungrounded.
-3. Canonicalise a page holding `` `value[^x]` `` and see the code-span literal preserved rather than read as a footnote reference.
+Kind: command
+Place: `madarch fill --probe-acp` and a product wiki fill with the prime-agent writer selected
+1. Run the ACP probe and see prime-agent reported as ready or refused with the missing runtime setting named.
+2. Run a fill and see the configured prime-agent write product wiki pages, or see the exact runtime refusal without a different agent or provider being selected.
 
 ## Blocking questions
 None.
 
+## Rationale
+The daemon and its access belong to the VM runtime. Madarch should pass only the allowlisted environment and explicit machine settings to a fresh ACP process. It must not infer credentials, provider, or model, and must not fall back to a different writer when the runtime is unavailable.
+
 ## Design and decisions
-`readPage(body, language)` parses the page once with remark and keeps span maps for footnote references, question links, links and inline code. `SentenceView` carries the sentence's source range, plain text, references, links and questions; `statementsOf` names a statement by the first reference of its run, as before. `plainSentence` slices the tree tokens and removes only node-backed references, so a footnote-shaped literal inside inline code survives. `format.ts` validates and canonicalises from those spans; `tools.ts`, `answers.ts` and the graph index call the same reader. The page's language travels from the writer run into `declarationOf` and from the product manifest into `readKnowledgePages`, so a domain declaration and an indexed page read their sentences in the language the page is written in. The migration fixture was generated by the writer before this change and is replayed through `checkPage` with `previous` set.
+`MADARCH_PRIME_RUNTIME_READY` identifies the machine-created readiness file. `MADARCH_PRIME_PROVIDER` and `MADARCH_PRIME_MODEL` select the machine's configured provider group and model. Runtime values are read and validated at launch; the runtime file's `env` object is the complete child environment allowlist. The ACP child has its own initialization and session. It never reuses a launcher session and madarch does not shut down the shared daemon. The stock CLI still cannot eliminate a race in which the daemon disappears after validation.
 
 ## Acceptance evidence
-- `test/writer-sentence-reader.test.ts` holds the two adjacent sentences, the hidden claim in a navigation label, the code-span literal in a plain sentence, the canonical code span, and the previous-writer migration.
-- `test/writer-sentence-links.test.ts` holds the Russian `См.` boundary and the remaining abbreviation-shaped sentences the segmenter accepts.
-- `test/fixtures/old-writer-pages.json` is the previous writer's canonical pages for `docs/domains/flags.md` and `docs/domains/tokens.md`.
-- `bun test test/writer-sentence-reader.test.ts test/writer-sentence-links.test.ts` on this branch: `42 pass, 0 fail`, `118 expect() calls`.
+Validation and authorized fixture-fill outcomes are in `/workspace/repo/out/report.md`.
+
+## DONE WHEN
+The ACP probe and writer chooser offer prime-agent, runtime settings are passed without credential handling or fallback, and an authorized throwaway product fill completes with pages written using the configured model.
