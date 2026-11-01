@@ -98,6 +98,7 @@ export function makeUnitAgent(id: string, env: DraftEnv, progress?: (line: strin
     spec: { id: entry.id, command: launch.binary, args: machineLaunch.args },
     specForCwd: (cwd) => ({ id: entry.id, command: launch.binary, args: acpLaunchOf(entry, env, cwd, { PATH: searchPathOf(entry, env) }, launch.args).args }),
     env: machineLaunch.env,
+    exactEnv: entry.machineLaunch !== undefined,
     ...(progress === undefined ? {} : { progress }),
     ...(preferences === undefined ? {} : { preferences }),
     ...(journal === undefined ? {} : { journal }),
@@ -123,7 +124,7 @@ export async function queryAgentChoices(id: string, env: DraftEnv): Promise<{ ok
   let connection: Awaited<ReturnType<typeof connectAcpAgent>> | undefined;
   try {
     const queryLaunch = acpLaunchOf(entry, env, scratch, { PATH: searchPathOf(entry, env) }, launch.args);
-    connection = await connectAcpAgent({ id: entry.id, command: launch.binary, args: queryLaunch.args }, { cwd: scratch, env: queryLaunch.env, timeoutMs: QUERY_TIMEOUT_MS, sessionTimeoutMs: QUERY_TIMEOUT_MS });
+    connection = await connectAcpAgent({ id: entry.id, command: launch.binary, args: queryLaunch.args }, { cwd: scratch, env: queryLaunch.env, exactEnv: entry.machineLaunch !== undefined, timeoutMs: QUERY_TIMEOUT_MS, sessionTimeoutMs: QUERY_TIMEOUT_MS });
     await connection.initialize();
     const session = await connection.newSession({ cwd: scratch });
     return { ok: true, choices: choicesOf(session) };

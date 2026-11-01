@@ -397,7 +397,7 @@ export async function probeAcpAgents(options: { cwd?: string; path?: string; tim
     const resolvedLaunch = acpLaunchOf(entry, env, cwd, { PATH: searchPath }, launch.args);
     const primeArgs = resolvedLaunch.args;
     try {
-      connection = await connectAcpAgent({ id: entry.id, command: launch.executable!, args: primeArgs }, { cwd, timeoutMs: options.timeoutMs, env: resolvedLaunch.env });
+      connection = await connectAcpAgent({ id: entry.id, command: launch.executable!, args: primeArgs }, { cwd, timeoutMs: options.timeoutMs, env: resolvedLaunch.env, exactEnv: entry.machineLaunch !== undefined });
       const initialized = await connection.initialize();
       const agentName = initialized.agentInfo?.name ?? entry.label;
       const agentVersion = initialized.agentInfo?.version;
