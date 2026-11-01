@@ -29,6 +29,8 @@ import type { ToolAnswer } from './tools.js';
 
 export interface AcpAgentOptions {
   readonly spec: AcpAgentSpec;
+  /** Builds machine-owned arguments using the same scratch folder given to session/new. */
+  readonly specForCwd?: (cwd: string) => AcpAgentSpec;
   readonly limits?: StageLimits;
   /** Environment for the agent process (its PATH must reach the adapter's binary). */
   readonly env?: Readonly<Record<string, string>>;
@@ -180,7 +182,7 @@ export function acpUnitAgent(options: AcpAgentOptions): UnitAgent & { close(): P
     scratch = await mkdtemp(path.join(tmpdir(), 'madarch-writer-'));
     let started: AcpConnection | undefined;
     try {
-      started = await connectAcpAgent(options.spec, { cwd: scratch, onRefused: refusedRequest, ...(options.env === undefined ? {} : { env: options.env }) });
+      started = await connectAcpAgent(options.specForCwd?.(scratch) ?? options.spec, { cwd: scratch, onRefused: refusedRequest, ...(options.env === undefined ? {} : { env: options.env }) });
       await started.initialize();
     } catch (error) {
       await started?.close().catch(() => undefined);

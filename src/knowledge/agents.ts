@@ -12,7 +12,7 @@
  * code.
  */
 import path from 'node:path';
-import { ACP_ADAPTERS, acpAdapterBinFolder, acpAgentFolder, acpInstallOffer, acpLoginState, type AcpAdapterCatalogueEntry } from '../fill/acp-probe.js';
+import { ACP_ADAPTERS, acpAdapterBinFolder, acpAgentFolder, acpInstallOffer, acpLaunchOf, acpLoginState, type AcpAdapterCatalogueEntry } from '../fill/acp-probe.js';
 import { installAcpAdapter } from '../fill/acp-install.js';
 import { resolveExecutable } from '../fill/acp.js';
 import { DEFAULT_STAGE_LIMITS } from '../fill/stage.js';
@@ -21,7 +21,6 @@ import { DEFAULT_UNIT_BOUNDS, MAX_DOMAINS } from '../writer/tools.js';
 import { DEFAULT_EDITORIAL_REQUESTS_PER_PAGE } from '../writer/editorial.js';
 import { acpUnitAgent } from '../writer/acp-agent.js';
 import { connectAcpAgent } from '../fill/acp.js';
-import { primeRuntime } from '../fill/prime-runtime.js';
 import { choicesOf, type AgentChoices, type AgentPreferences } from '../fill/acp-choices.js';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -90,15 +89,19 @@ export function makeUnitAgent(id: string, env: DraftEnv, progress?: (line: strin
   const entry = adapterOf(id);
   if (entry === undefined) return { error: `src/knowledge/agents.ts: madarch offers ${WRITER_AGENTS.join(' and ')}; ${JSON.stringify(id)} is none of them` };
   const launch = launchOf(entry, env);
-  if (entry.id === 'prime-agent') {
-    try { primeRuntime(env); } catch (error) { return { error: error instanceof Error ? error.message : String(error) }; }
-  }
+  let machineLaunch: ReturnType<typeof acpLaunchOf>;
+  try { machineLaunch = acpLaunchOf(entry, env, process.cwd(), { PATH: searchPathOf(entry, env) }, launch?.args); } catch (error) { return { error: error instanceof Error ? error.message : String(error) }; }
   if (launch === undefined) {
     return { error: `the ${entry.label} adapter is not installed: none of ${entry.launches.map((l) => l.binary).join(', ')} is on the PATH or in ${acpAgentFolder(entry, env, homeFromEnv(env))}` };
   }
-  const prime = entry.id === 'prime-agent' ? primeRuntime(env) : undefined;
-  const args = prime ? ['--mode', 'acp', '--offline', '--daemon-socket', prime.socket, '--provider', prime.provider, '--model', prime.model, '--cwd', process.cwd()] : launch.args;
-  return acpUnitAgent({ spec: { id: entry.id, command: launch.binary, args }, env: prime ? prime.env : { PATH: searchPathOf(entry, env) }, ...(progress === undefined ? {} : { progress }), ...(preferences === undefined ? {} : { preferences }), ...(journal === undefined ? {} : { journal }) });
+  return acpUnitAgent({
+    spec: { id: entry.id, command: launch.binary, args: machineLaunch.args },
+    specForCwd: (cwd) => ({ id: entry.id, command: launch.binary, args: acpLaunchOf(entry, env, cwd, { PATH: searchPathOf(entry, env) }, launch.args).args }),
+    env: machineLaunch.env,
+    ...(progress === undefined ? {} : { progress }),
+    ...(preferences === undefined ? {} : { preferences }),
+    ...(journal === undefined ? {} : { journal }),
+  });
 }
 
 /** How long an agent may take to start and open one session when it is asked what it offers. */
@@ -113,14 +116,14 @@ export async function queryAgentChoices(id: string, env: DraftEnv): Promise<{ ok
   const entry = adapterOf(id);
   if (entry === undefined) return { ok: false, message: `src/knowledge/agents.ts: madarch offers ${WRITER_AGENTS.join(' and ')}; ${JSON.stringify(id)} is none of them` };
   const launch = launchOf(entry, env);
-  let prime: ReturnType<typeof primeRuntime> | undefined;
-  if (entry.id === 'prime-agent') { try { prime = primeRuntime(env); } catch (error) { return { ok: false, message: error instanceof Error ? error.message : String(error) }; } }
+  let machineLaunch: ReturnType<typeof acpLaunchOf>;
+  try { machineLaunch = acpLaunchOf(entry, env, process.cwd(), { PATH: searchPathOf(entry, env) }); } catch (error) { return { ok: false, message: error instanceof Error ? error.message : String(error) }; }
   if (launch === undefined) return { ok: false, message: `the ${entry.label} adapter is not installed: none of ${entry.launches.map((l) => l.binary).join(', ')} is on the PATH or in ${acpAgentFolder(entry, env, homeFromEnv(env))}` };
   const scratch = await mkdtemp(path.join(tmpdir(), 'madarch-choices-'));
   let connection: Awaited<ReturnType<typeof connectAcpAgent>> | undefined;
   try {
-    const args = prime ? ['--mode','acp','--offline','--daemon-socket',prime.socket,'--provider',prime.provider,'--model',prime.model,'--cwd',scratch] : launch.args;
-    connection = await connectAcpAgent({ id: entry.id, command: launch.binary, args }, { cwd: scratch, env: prime ? prime.env : { PATH: searchPathOf(entry, env) }, timeoutMs: QUERY_TIMEOUT_MS, sessionTimeoutMs: QUERY_TIMEOUT_MS });
+    const queryLaunch = acpLaunchOf(entry, env, scratch, { PATH: searchPathOf(entry, env) }, launch.args);
+    connection = await connectAcpAgent({ id: entry.id, command: launch.binary, args: queryLaunch.args }, { cwd: scratch, env: queryLaunch.env, timeoutMs: QUERY_TIMEOUT_MS, sessionTimeoutMs: QUERY_TIMEOUT_MS });
     await connection.initialize();
     const session = await connection.newSession({ cwd: scratch });
     return { ok: true, choices: choicesOf(session) };

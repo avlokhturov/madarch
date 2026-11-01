@@ -66,6 +66,8 @@ export interface AcpAdapterCatalogueEntry {
   fillAgent?: 'claude' | 'codex' | 'omp';
   /** The commands that start it as an ACP server, most current first. */
   launches: readonly { binary: string; args: readonly string[] }[];
+  /** Builds machine-owned launch arguments and the complete child environment when the adapter requires them. */
+  machineLaunch?: (options: { env: DraftEnv; cwd: string }) => { args: readonly string[]; env: Readonly<Record<string, string>> };
   /** How it is installed. */
   install: AcpAdapterInstall;
   /** Where the agent keeps its own sign-in, or that it keeps none madarch knows. */
@@ -158,6 +160,13 @@ export const ACP_ADAPTERS: readonly AcpAdapterCatalogueEntry[] = [
     id: 'prime-agent',
     label: 'prime-agent',
     launches: [{ binary: 'prime-agent', args: [] }],
+    machineLaunch: ({ env, cwd }) => {
+      const runtime = primeRuntime(env);
+      return {
+        args: ['--mode', 'acp', '--offline', '--daemon-socket', runtime.socket, '--provider', runtime.provider, '--model', runtime.model, '--cwd', cwd],
+        env: runtime.env,
+      };
+    },
     install: { kind: 'bundled', program: 'prime-agent', note: 'Install prime-agent on this machine from its trusted distribution.' },
     login: { kind: 'none', detail: 'prime-agent uses the machine-owned daemon runtime configured by MADARCH_PRIME_RUNTIME_READY; madarch reads only its allowlisted environment and never reads or stores credentials.' },
     evidence: 'prime-agent speaks ACP with --mode acp and connects to a machine-owned daemon socket. Its provider and model are configured explicitly; no fallback is used.',
@@ -176,7 +185,12 @@ export const ACP_ADAPTERS: readonly AcpAdapterCatalogueEntry[] = [
     login: { kind: 'none', detail: 'madarch does not know where pi keeps its sign-in, so the wizard cannot say whether it is signed in.' },
     evidence: 'The ACP registry lists pi ACP as pi-acp 0.0.34; its README says it bridges ACP to `pi --mode rpc` and needs pi 0.81.0 or newer on PATH (read 2026-10-18). pi has no ACP mode of its own. Its initialize answer states mcpCapabilities http false and sse false and its README says MCP servers are "accepted in ACP params and stored in session state, but not wired through to pi" (pi-acp 0.0.34 dist/index.js and README, read 2026-10-23, madarch-m38l.4): the writer hands its tools to an agent as an HTTP MCP server, so pi cannot write pages and the wiki does not offer it.',
   },
-];
+ ];
+
+/** Resolves an adapter's machine-owned launch values, or its ordinary launch. */
+export function acpLaunchOf(entry: AcpAdapterCatalogueEntry, env: DraftEnv, cwd: string, ordinaryEnv: Readonly<Record<string, string>>, ordinaryArgs: readonly string[] = entry.launches[0]?.args ?? []): { args: readonly string[]; env: Readonly<Record<string, string>> } {
+  return entry.machineLaunch?.({ env, cwd }) ?? { args: ordinaryArgs, env: ordinaryEnv };
+}
 
 /** Whether the agent is signed in, as far as a file's presence can tell. */
 export type AcpLoginState = 'signed-in' | 'not-signed-in' | 'unknown';
@@ -345,18 +359,16 @@ export async function probeAcpAgents(options: { cwd?: string; path?: string; tim
   const pathValue = options.path ?? env.PATH ?? '';
   const home = options.home ?? homeFromEnv(env);
   const cwd = options.cwd ?? process.cwd();
-  let prime: ReturnType<typeof primeRuntime> | undefined;
   const agentsFolder = madarchAgentsFolder(env, home);
   const findings: AcpProbeFinding[] = [];
   for (const entry of options.adapters ?? ACP_ADAPTERS) {
-    if (entry.id === 'prime-agent') {
-      try { prime = primeRuntime(env); } catch (error) {
-        findings.push({ id: entry.id, label: entry.label, status: 'failed', detail: error instanceof Error ? error.message : String(error), login: { state: 'unknown', detail: entry.login.detail }, install: acpInstallOffer(entry, env, home), evidence: entry.evidence });
-        continue;
-      }
+    let machineLaunch: ReturnType<typeof acpLaunchOf>;
+    try { machineLaunch = acpLaunchOf(entry, env, cwd, { PATH: pathValue }); } catch (error) {
+      findings.push({ id: entry.id, label: entry.label, status: 'failed', detail: error instanceof Error ? error.message : String(error), login: { state: 'unknown', detail: entry.login.detail }, install: acpInstallOffer(entry, env, home), evidence: entry.evidence });
+      continue;
     }
     const install = acpInstallOffer(entry, env, home);
-    const login = entry.id === 'prime-agent' ? { state: 'unknown' as const, detail: entry.login.detail } : acpLoginState(entry, home);
+    const login = entry.machineLaunch === undefined ? acpLoginState(entry, home) : { state: 'unknown' as const, detail: entry.login.detail };
     // madarch's own install of an adapter comes first: it is the version
     // pinned here, while whatever a person put on PATH may be another one.
     const ownBin = acpAdapterBinFolder(acpAgentFolder(entry, env, home));
@@ -382,9 +394,10 @@ export async function probeAcpAgents(options: { cwd?: string; path?: string; tim
       continue;
     }
     let connection: AcpConnection | undefined;
-    const primeArgs = entry.id === 'prime-agent' ? ['--mode', 'acp', '--offline', '--daemon-socket', prime!.socket, '--provider', prime!.provider, '--model', prime!.model, '--cwd', cwd] : launch.args;
+    const resolvedLaunch = acpLaunchOf(entry, env, cwd, { PATH: searchPath }, launch.args);
+    const primeArgs = resolvedLaunch.args;
     try {
-      connection = await connectAcpAgent({ id: entry.id, command: launch.executable!, args: primeArgs }, { cwd, timeoutMs: options.timeoutMs, env: entry.id === 'prime-agent' ? prime!.env : { PATH: searchPath } });
+      connection = await connectAcpAgent({ id: entry.id, command: launch.executable!, args: primeArgs }, { cwd, timeoutMs: options.timeoutMs, env: resolvedLaunch.env });
       const initialized = await connection.initialize();
       const agentName = initialized.agentInfo?.name ?? entry.label;
       const agentVersion = initialized.agentInfo?.version;
