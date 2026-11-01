@@ -60,7 +60,10 @@ export function offers(env: DraftEnv): AgentOffer[] {
   const home = homeFromEnv(env);
   return WRITER_AGENTS.map((id) => {
     const entry = adapterOf(id)!;
-    const installed = launchOf(entry, env) !== undefined;
+    let installed = launchOf(entry, env) !== undefined;
+    if (installed && entry.machineLaunch !== undefined) {
+      try { acpLaunchOf(entry, env, process.cwd(), { PATH: searchPathOf(entry, env) }); } catch { installed = false; }
+    }
     const login = acpLoginState(entry, home);
     const offer = acpInstallOffer(entry, env, home);
     return {

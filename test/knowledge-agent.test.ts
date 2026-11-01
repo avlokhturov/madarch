@@ -148,7 +148,7 @@ afterAll(async () => {
 });
 
 describe('the choice of the agent', () => {
-  test('the wiki offers Claude Code, Codex, OpenCode and omp (not Pi) with their state, states the bound in numbers, and has chosen none', async () => {
+  test('the wiki offers Claude Code, Codex, OpenCode, omp and prime-agent (not Pi) with their state, states the bound in numbers, and has chosen none', async () => {
     const status = await get('/api/k/status');
     expect(status.body.chosenAgent).toBeNull();
     expect(status.body.bounds).toEqual({ turns: 30, minutes: 10, toolCalls: 80, writeAttempts: 5, maxDomains: 12, editorialRequestsPerPage: 2 });
@@ -160,6 +160,7 @@ describe('the choice of the agent', () => {
       ['codex', false, '@agentclientprotocol/codex-acp'],
       ['opencode', false, 'opencode-ai'],
       ['omp', false, '@oh-my-pi/pi-coding-agent'],
+      ['prime-agent', false, 'prime-agent'],
     ]);
     expect(agents.body.agents[0].install.folder).toBe(agentFolder('claude-code'));
   });
