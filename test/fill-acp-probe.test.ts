@@ -73,6 +73,25 @@ function entry(overrides: Partial<AcpAdapterCatalogueEntry> = {}): AcpAdapterCat
 }
 
 describe('the ACP probe reports what this machine can connect', () => {
+  test('prime-agent probe launches the configured ACP binary with daemon runtime options', async () => {
+    const machineNow = machine();
+    const server = await import('node:net').then(({ createServer }) => createServer());
+    const socket = join(machineNow.home, 'daemon.sock');
+    await new Promise<void>((resolve) => server.listen(socket, resolve));
+    try {
+      const fs = await import('node:fs'); const stat = fs.lstatSync(socket);
+      const runtime = join(machineNow.home, 'runtime.json');
+      const proc = fs.readFileSync(`/proc/${process.pid}/stat`, 'utf8').split(') ').slice(1).join(') ').trim().split(/\s+/);
+      writeFileSync(runtime, JSON.stringify({ phase: 'ready', socket, socket_dev: stat.dev, socket_ino: stat.ino, processes: [], controller: { pid: process.pid, ticks: proc[19] }, env: { PATH: machineNow.path, HOME: machineNow.home } }));
+      const env = { ...machineNow.env, MADARCH_PRIME_RUNTIME_READY: runtime, MADARCH_PRIME_PROVIDER: 'provider-test', MADARCH_PRIME_MODEL: 'model-test' };
+      const fake = fakeAdapter(machineNow.path, 'prime-agent', ANSWERING_ADAPTER);
+      const report = await probeAcpAgents({ cwd: machineNow.home, path: machineNow.path, home: machineNow.home, env, adapters: [ACP_ADAPTERS.find((candidate) => candidate.id === 'prime-agent')!] });
+      const finding = report.findings[0]!;
+      expect(finding.status).toBe('connected'); expect(finding.args).toEqual(['--mode','acp','--offline','--daemon-socket',socket,'--provider','provider-test','--model','model-test','--cwd',machineNow.home]);
+      expect(finding.executable).toBe(fake);
+    } finally { server.close(); }
+  });
+
   test('an installed adapter is reported connected after the initialize handshake, with no prompt sent', async () => {
     const machineNow = machine();
     const adapter = fakeAdapter(acpAdapterBinFolder(acpAgentFolder('claude', machineNow.env, machineNow.home)), 'claude-agent-acp', ANSWERING_ADAPTER);
@@ -286,7 +305,8 @@ describe('`madarch fill --probe-acp`', () => {
     expect(report.path).toBe(empty);
     expect(report.agentsFolder).toBe(join(empty, 'madarch', 'agents'));
     expect(report.findings.map((finding) => finding.id)).toEqual(ACP_ADAPTERS.map((adapter) => adapter.id));
-    expect(report.findings.every((finding) => finding.status === 'not-installed')).toBe(true);
+    expect(report.findings.filter((finding) => finding.id !== 'prime-agent').every((finding) => finding.status === 'not-installed')).toBe(true);
+    expect(report.findings.find((finding) => finding.id === 'prime-agent')?.status).toBe('failed');
     expect(report.findings.every((finding) => finding.evidence.length > 20)).toBe(true);
     // The sign-in state follows the home given, never this machine's own.
     const signIn = report.findings.map((finding) => finding.login.state);
@@ -303,7 +323,7 @@ describe('`madarch fill --probe-acp`', () => {
 
 describe('the catalogue names the documented adapters', () => {
   test('every agent the fill considers is listed once, with its launch command, its install and its sign-in', () => {
-    expect(ACP_ADAPTERS.map((adapter) => adapter.id)).toEqual(['claude-code', 'codex', 'omp', 'opencode', 'pi']);
+    expect(ACP_ADAPTERS.map((adapter) => adapter.id)).toEqual(['claude-code', 'codex', 'omp', 'opencode', 'prime-agent', 'pi']);
     const byId = new Map(ACP_ADAPTERS.map((adapter) => [adapter.id, adapter]));
     expect(byId.get('claude-code')?.install).toMatchObject({ kind: 'npm', package: '@agentclientprotocol/claude-agent-acp', version: '0.93.0', unpackedBytes: 1_956_577, installedBytes: 313_672_155 });
     expect(byId.get('claude-code')?.launches.map((launch) => launch.binary)).toEqual(['claude-agent-acp', 'claude-code-acp']);

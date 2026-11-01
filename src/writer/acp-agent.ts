@@ -29,9 +29,13 @@ import type { ToolAnswer } from './tools.js';
 
 export interface AcpAgentOptions {
   readonly spec: AcpAgentSpec;
+  /** Builds machine-owned arguments using the same scratch folder given to session/new. */
+  readonly specForCwd?: (cwd: string) => AcpAgentSpec;
   readonly limits?: StageLimits;
   /** Environment for the agent process (its PATH must reach the adapter's binary). */
   readonly env?: Readonly<Record<string, string>>;
+  /** Do not inherit any variables from madarch when launching a machine-owned runtime child. */
+  readonly exactEnv?: boolean;
   readonly timers?: UnitTimers;
   readonly progress?: (line: string) => void;
   /** The model and reasoning level the reader chose for this agent (madarch-m38l.11); set on each session when the agent still offers them. */
@@ -180,7 +184,7 @@ export function acpUnitAgent(options: AcpAgentOptions): UnitAgent & { close(): P
     scratch = await mkdtemp(path.join(tmpdir(), 'madarch-writer-'));
     let started: AcpConnection | undefined;
     try {
-      started = await connectAcpAgent(options.spec, { cwd: scratch, onRefused: refusedRequest, ...(options.env === undefined ? {} : { env: options.env }) });
+      started = await connectAcpAgent(options.specForCwd?.(scratch) ?? options.spec, { cwd: scratch, onRefused: refusedRequest, ...(options.env === undefined ? {} : { env: options.env }), ...(options.exactEnv ? { exactEnv: true } : {}) });
       await started.initialize();
     } catch (error) {
       await started?.close().catch(() => undefined);

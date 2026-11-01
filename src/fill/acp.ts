@@ -234,8 +234,10 @@ export interface AcpRefusal {
 export interface ConnectAcpOptions {
   /** The folder the agent runs in; made absolute before it is sent. */
   cwd: string;
-  /** Extra environment for the child, merged over this process's. */
+  /** Environment values for the child. */
   env?: Readonly<Record<string, string>>;
+  /** Starts the child with env exactly as supplied rather than merging parent variables. */
+  exactEnv?: boolean;
   /** How long `initialize` may take, in milliseconds. */
   timeoutMs?: number;
   /** How long `session/new` may take, in milliseconds: an agent starts the session's MCP servers there. */
@@ -414,7 +416,7 @@ export async function connectAcpAgent(spec: AcpAgentSpec, options: ConnectAcpOpt
   }
   // Detached puts the agent in its own process group, so closing ends the
   // helpers it started as well as itself.
-  const child: ChildProcess = spawn(executable, [...(spec.args ?? [])], { cwd, detached: true, stdio: ['pipe', 'pipe', 'pipe'], env: { ...process.env, ...options.env } });
+  const child: ChildProcess = spawn(executable, [...(spec.args ?? [])], { cwd, detached: true, stdio: ['pipe', 'pipe', 'pipe'], env: options.exactEnv ? options.env : { ...process.env, ...options.env } });
   if (child.stdin === null || child.stdout === null) {
     child.kill('SIGKILL');
     throw new AcpError(`src/fill/acp.ts:connectAcpAgent: the agent ${spec.id} (${executable}) started without the pipes ACP needs`);

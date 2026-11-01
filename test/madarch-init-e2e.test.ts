@@ -63,6 +63,9 @@ beforeAll(async () => {
   env = { ...(process.env as Record<string, string>), ...SAMPLE_IDENTITY, HOME: join(work, 'user'), MADARCH_HOME: home, MADARCH_APP: app, PATH: `${bin}:${process.env.PATH ?? ''}`, DISPLAY: '', WAYLAND_DISPLAY: '' };
   delete env['SSH_CONNECTION'];
   delete env['SSH_TTY'];
+  delete env['MADARCH_PRIME_RUNTIME_READY'];
+  delete env['MADARCH_PRIME_PROVIDER'];
+  delete env['MADARCH_PRIME_MODEL'];
   const port = await freePort();
   const init = madarch(['init', '--home', home, '--port', String(port), '--no-open'], repository);
   initOutput = `${init.stdout}${init.stderr}`;
@@ -101,7 +104,7 @@ describe('madarch init', () => {
     const status = await get('api/k/status');
     expect(status.body).toMatchObject({ manifest: 'ok', filled: false, home: null, chosenAgent: null, writer: { state: 'idle' }, repositories: [{ name: 'training-shop', filled: false }] });
     const agents = await get('api/k/agents');
-    expect(agents.body.agents.map((offer: { id: string; installed: boolean }) => [offer.id, offer.installed])).toEqual([['claude-code', true], ['codex', false], ['opencode', false], ['omp', false]]);
+    expect(agents.body.agents.map((offer: { id: string; installed: boolean }) => [offer.id, offer.installed])).toEqual([['claude-code', true], ['codex', false], ['opencode', false], ['omp', false], ['prime-agent', false]]);
     // The first read of a product opens its store (a PGlite of about two seconds) and asks which adapters stand on the
     // PATH: the case names its own bound, as every case whose work is long does (madarch-tzte.36), so a run of several
     // files — where the preload's default reaches no file — does not stop it at five seconds.

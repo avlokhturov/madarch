@@ -12,7 +12,7 @@
  * code.
  */
 import path from 'node:path';
-import { ACP_ADAPTERS, acpAdapterBinFolder, acpAgentFolder, acpInstallOffer, acpLoginState, type AcpAdapterCatalogueEntry } from '../fill/acp-probe.js';
+import { ACP_ADAPTERS, acpAdapterBinFolder, acpAgentFolder, acpInstallOffer, acpLaunchOf, acpLoginState, type AcpAdapterCatalogueEntry } from '../fill/acp-probe.js';
 import { installAcpAdapter } from '../fill/acp-install.js';
 import { resolveExecutable } from '../fill/acp.js';
 import { DEFAULT_STAGE_LIMITS } from '../fill/stage.js';
@@ -29,7 +29,7 @@ import type { Journal } from '../writer/journal.js';
 import type { AgentOffer, WriterBounds } from './model.js';
 
 /** The ids of the agents the wiki offers. */
-export const WRITER_AGENTS: readonly string[] = ['claude-code', 'codex', 'opencode', 'omp'];
+export const WRITER_AGENTS: readonly string[] = ['claude-code', 'codex', 'opencode', 'omp', 'prime-agent'];
 
 /** The bound stated to the reader in plain words, from the numbers the writer enforces. */
 export const WRITER_BOUNDS: WriterBounds = {
@@ -60,7 +60,10 @@ export function offers(env: DraftEnv): AgentOffer[] {
   const home = homeFromEnv(env);
   return WRITER_AGENTS.map((id) => {
     const entry = adapterOf(id)!;
-    const installed = launchOf(entry, env) !== undefined;
+    let installed = launchOf(entry, env) !== undefined;
+    if (installed && entry.machineLaunch !== undefined) {
+      try { acpLaunchOf(entry, env, process.cwd(), { PATH: searchPathOf(entry, env) }); } catch { installed = false; }
+    }
     const login = acpLoginState(entry, home);
     const offer = acpInstallOffer(entry, env, home);
     return {
@@ -69,9 +72,9 @@ export function offers(env: DraftEnv): AgentOffer[] {
       installed,
       login: login.state,
       loginDetail: login.detail,
-      install: installed || offer === undefined || entry.install.kind !== 'npm'
-        ? null
-        : { package: entry.install.package, version: entry.install.version, size: `${Math.round((entry.install.installedBytes ?? entry.install.unpackedBytes) / 1_000_000)} MB`, folder: acpAgentFolder(entry, env, home) },
+      install: installed || offer === undefined ? null : entry.install.kind === 'npm'
+        ? { package: entry.install.package, version: entry.install.version, size: `${Math.round((entry.install.installedBytes ?? entry.install.unpackedBytes) / 1_000_000)} MB`, folder: acpAgentFolder(entry, env, home) }
+        : { package: entry.install.program, version: 'machine-installed', size: 'bundled', folder: entry.install.program },
     };
   });
 }
@@ -89,10 +92,20 @@ export function makeUnitAgent(id: string, env: DraftEnv, progress?: (line: strin
   const entry = adapterOf(id);
   if (entry === undefined) return { error: `src/knowledge/agents.ts: madarch offers ${WRITER_AGENTS.join(' and ')}; ${JSON.stringify(id)} is none of them` };
   const launch = launchOf(entry, env);
+  let machineLaunch: ReturnType<typeof acpLaunchOf>;
+  try { machineLaunch = acpLaunchOf(entry, env, process.cwd(), { PATH: searchPathOf(entry, env) }, launch?.args); } catch (error) { return { error: error instanceof Error ? error.message : String(error) }; }
   if (launch === undefined) {
     return { error: `the ${entry.label} adapter is not installed: none of ${entry.launches.map((l) => l.binary).join(', ')} is on the PATH or in ${acpAgentFolder(entry, env, homeFromEnv(env))}` };
   }
-  return acpUnitAgent({ spec: { id: entry.id, command: launch.binary, args: launch.args }, env: { PATH: searchPathOf(entry, env) }, ...(progress === undefined ? {} : { progress }), ...(preferences === undefined ? {} : { preferences }), ...(journal === undefined ? {} : { journal }) });
+  return acpUnitAgent({
+    spec: { id: entry.id, command: launch.binary, args: machineLaunch.args },
+    specForCwd: (cwd) => ({ id: entry.id, command: launch.binary, args: acpLaunchOf(entry, env, cwd, { PATH: searchPathOf(entry, env) }, launch.args).args }),
+    env: machineLaunch.env,
+    exactEnv: entry.machineLaunch !== undefined,
+    ...(progress === undefined ? {} : { progress }),
+    ...(preferences === undefined ? {} : { preferences }),
+    ...(journal === undefined ? {} : { journal }),
+  });
 }
 
 /** How long an agent may take to start and open one session when it is asked what it offers. */
@@ -107,11 +120,14 @@ export async function queryAgentChoices(id: string, env: DraftEnv): Promise<{ ok
   const entry = adapterOf(id);
   if (entry === undefined) return { ok: false, message: `src/knowledge/agents.ts: madarch offers ${WRITER_AGENTS.join(' and ')}; ${JSON.stringify(id)} is none of them` };
   const launch = launchOf(entry, env);
+  let machineLaunch: ReturnType<typeof acpLaunchOf>;
+  try { machineLaunch = acpLaunchOf(entry, env, process.cwd(), { PATH: searchPathOf(entry, env) }); } catch (error) { return { ok: false, message: error instanceof Error ? error.message : String(error) }; }
   if (launch === undefined) return { ok: false, message: `the ${entry.label} adapter is not installed: none of ${entry.launches.map((l) => l.binary).join(', ')} is on the PATH or in ${acpAgentFolder(entry, env, homeFromEnv(env))}` };
   const scratch = await mkdtemp(path.join(tmpdir(), 'madarch-choices-'));
   let connection: Awaited<ReturnType<typeof connectAcpAgent>> | undefined;
   try {
-    connection = await connectAcpAgent({ id: entry.id, command: launch.binary, args: launch.args }, { cwd: scratch, env: { PATH: searchPathOf(entry, env) }, timeoutMs: QUERY_TIMEOUT_MS, sessionTimeoutMs: QUERY_TIMEOUT_MS });
+    const queryLaunch = acpLaunchOf(entry, env, scratch, { PATH: searchPathOf(entry, env) }, launch.args);
+    connection = await connectAcpAgent({ id: entry.id, command: launch.binary, args: queryLaunch.args }, { cwd: scratch, env: queryLaunch.env, exactEnv: entry.machineLaunch !== undefined, timeoutMs: QUERY_TIMEOUT_MS, sessionTimeoutMs: QUERY_TIMEOUT_MS });
     await connection.initialize();
     const session = await connection.newSession({ cwd: scratch });
     return { ok: true, choices: choicesOf(session) };
