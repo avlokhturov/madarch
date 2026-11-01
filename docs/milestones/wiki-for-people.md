@@ -58,6 +58,16 @@ the owner's reading. (madarch-j6ho)
 Serves: every journey above, as their acceptance.
 *Check:* both checks in CI; the acceptance record below filled.
 
+O7: madarch runs every job through one workflow that walks the product graph by
+entity kinds, per file and top down, and every node and edge is verified, with
+one storage layer, one entry point per job and nothing left of the paths it
+replaces (decision 0033). (madarch-8bdc)
+Serves: journeys 4, 6 and 7, and every journey that reads the graph.
+*Check:* the committed architecture checks fail on planted second writers, entry
+points and unreachable modules; the static fill of madarch's own product
+reaches the end with peak memory linear in files; a filled product shows a
+verification state on every node and edge, with coverage.
+
 ### Definition of done
 
 1. Every defect in the list below is re-checked on a fresh fill of shop and of
@@ -150,6 +160,14 @@ their renderers), .17 (pause and stop), .19 (code problems), and .20 to .25,
 filed on 2026-10-24. The merged self-filling tasks are closed through close-out
 with their acceptance records; its remaining open tasks are reviewed one by one
 and deferred or closed, with the list shown to the owner.
+
+### O7 added (2026-11-01)
+
+The owner added O7 after the madarch self-fill took down two VMs and the
+coordinator found a second fill surface: «Один каркас конечно», «Весь старый код
+удаляем, никакого мертвого кода и обратной совместимости, у нас greenfield», and
+«Да» to start. The architecture talk is docs/vision/architecture-talk-2026-11-01.md;
+the decision is 0033. madarch-alzf's memory work is carried by O7.
 
 ### Finding budget
 
