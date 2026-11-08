@@ -10,11 +10,14 @@ section for goals and maturity levels, whose engine work stands deferred
 (madarch-wkne), not opened. Both folds are in the sections below; the status
 stays accepted.
 
-Pending amendment, 2026-11-04: proposed [0034](0034-human-and-agent-work-interfaces.md)
-and [0035](0035-work-reservations-and-operation-sync.md) distinguish madarch's shared
-human/agent work-item authority from an external executor's process queue. Both
-interfaces would use the same work commands; Lifemodel would remain optional.
-The proposal is not accepted and does not replace the decision below.
+Pending clarification, 2026-11-08: revised proposals
+[0034](0034-human-and-agent-work-interfaces.md) and
+[0035](0035-work-reservations-and-operation-sync.md) follow the maintainer's
+[PR 218 review](https://github.com/shady2k/madarch/pull/218#issuecomment-6705724890):
+human and agent work interfaces share the catalog, workflow rule and checked commands;
+all work data is PostgreSQL data, with replaceable operation transport. External
+executors still own their processes; Lifemodel remains optional. These proposals do
+not mark an implementation accepted or replace the historical decision below.
 
 Refines 0017 (the product wiki as the source of truth and the one write path)
 and its boundary record 0021 (the product repository contract); builds the

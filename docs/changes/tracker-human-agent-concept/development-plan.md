@@ -1,126 +1,144 @@
-# Development and acceptance proposal
+# Development plan: local work alongside fill, then proved shared coordination
 
-Status: proposed sequence, **not scheduled tasks or authorization to implement**.
-The tracker epic madarch-lk4r remains deferred. The only active scope of this PR is
-supporting documentation (madarch-ae8g). Existing current-milestone work is not moved.
+Status: revised proposed sequence after the [maintainer's review](https://github.com/shady2k/madarch/pull/218#issuecomment-6705724890).
+This document replaces the initial P0–P4 sequence. It does not start implementation,
+create ready implementation tasks or execute a live migration.
 
-## Start gate: discussion before implementation
+## Direction and first agreements
 
-1. Review the [concept](concept.md), both interfaces, ADRs 0034/0035 and the explicit
-   amendments to accepted decisions. Resolve comments with evidence and rationale.
-2. The owner chooses the tracker milestone's place, accepts or changes its outcomes,
-   and separately authorizes the bounded prototype. A documentation merge alone is
-   not that authorization.
-3. Confirm the operational authority, authenticated identity integration, publication
-   protocol and migration scope. Record accepted decisions, then turn the first
-   approved checkpoint into tracked worker-sized tasks. Later checkpoints stay coarse.
-4. Admit implementation only after the prototype's proof and the owner's go-ahead.
-   Each production checkpoint carries a real capability delta and named checks; this
-   supporting change cannot stand in for those approvals or receipts.
+The maintainer directs the tracker to start alongside fill, local first, with catalog
+entities/configurable fields, comments, time and br import. Do not wait for all fill
+work or a server before beginning that useful slice. Equally, do not call an isolated
+local claim a distributed guarantee: taking shared work requires the proved online
+remote protocol.
 
-## Proposed independently acceptable checkpoints
+First agree **the uniform manifest rule and the table structure** in
+[model-contract.md](model-contract.md). Review them with the catalog/storage/fill
+interfaces and stable-key graph direction. These are M0's two substantive approvals;
+writing this PR is not their acceptance. Q2 holder/handoff, Q3 lane composition and Q4
+transport/trust/retention decisions are settled before the checkpoints that consume
+them, not reopened as alternatives to the maintainer's twelve requirements.
 
-| Checkpoint | What can be observed when accepted | Required result before it | Proof boundary |
+## Independently acceptable checkpoints
+
+| Checkpoint | Observable result | Prerequisites | Evidence boundary |
 | --- | --- | --- | --- |
-| P0. Coordination/publication prototype | Two real clients contend for one item; transfer fences the old owner; a crash between Git and the store recovers without half a decomposition. | Concept choices accepted and prototype authorized. | Real PGlite and PostgreSQL transactions through the owner interface; generated repositories; no production migration. Negative result can change ADR0035. |
-| P1. Human plans, agent executes, human accepts | A person creates and decomposes an outcome in the wiki, authorizes a child, an external agent claims and submits it through the shared contract, the person accepts/returns it and reviews the parent separately. | P0 and the common storage-owner seam. | Complete vertical path, real auth and browser UI; HTTP/CLI/MCP adapters agree; no chat-only or API-only substitute. |
-| P2. Planning and review at product scale | Backlog/tree/board, split/reparent/dependency editing, proposal inbox and result review preserve identity and show live basis changes at 10,000 work items. | P1's shared definitions/lifecycle and event contract. | H01-H11 and H13-H16, bounded pagination, accessible controls and measured rendered surfaces. H12 covers only cached-state/offline display and refusal of new grants here; no reconnect claim. No claimed latency SLA until measured/agreed. |
-| P3. Disconnected work and recovery | Already-reserved work survives disconnect; child proposals, time and results synchronize without duplicates, stale authority or lost rejected material. | P1's journal/fences, P2's conflict/recovery views, reviewed retention policy. | Full H12, two independent client stores, real reconnect and server restart/restore; per-operation outcomes and cursor-gap recovery. |
-| P4. Existing work migrates and old writers disappear | Product scoped tasks and the explicitly chosen br backlog appear under the new model with preserved history and no competing mutation path. | Prior checkpoints, approved mapping and rehearsal; explicit cutover approval. | Reconciliation report, rollback rehearsal, full end-to-end walk, old writers refused/removed in the same cutover. |
+| M0 — One manifest rule and table agreement | Maintainer agrees the uniform declaration/install rule and logical/physical table responsibilities, integration seams and retained open decisions. | Revised concept, mature-model comparison, current source inventory. | Recorded agreement, field/identity/permission matrix and concrete fixtures; no fake passing runtime proof. |
+| L1 — Local usable work catalog | Person creates and decomposes work in madarch, reads original text, comments and time through human and agent views; kind fields/workflow definitions are configurable; local br export imports with reconciliation. | M0 and its shared catalog/storage interfaces, not completion of all fill or G1. | Real PostgreSQL-compatible local storage, actual browser and CLI/MCP reads/planning commands, isolated import fixture. No production shared grants or automatic agent execution before G1. |
+| G1 — Serverless coordination proof | Independent clients sharing a real Git remote cannot both take overlapping work, bypass ordered taking or revive obsolete grants after reconnect/pruning. | M0; Q2 holder/frontier/cap mapping; explicit Q4 trust/credential/protection candidate. Runs alongside L1 and fill. | Real Git remote and separate PostgreSQL client stores, crash/reconnect/host-protection evidence; a negative result returns the mechanism for agreement. |
+| I1 — Ordered human-agent work and policy acceptance | Human intake is triaged at its turn; suitable work is taken, executed externally, submitted and accepted/merged according to configured lanes; manual recovery and Problems work. | L1, accepted G1 guarantees, Q3 lane agreement. | Full UI/CLI/MCP scenario with real authenticated participants and reviewer/model evidence; all guards applied through one contract. |
+| O1 — Operational use and chosen cutover | Product-scale work remains responsive during fill; snapshots/checkpoints restore correctly; chosen legacy source migrates with reconciled data and no competing writer. | Applicable L1/G1/I1 evidence, retention and cutover agreement. | 10,000-item fixture, measured contention, restore/pruning, frozen-source import and rollback/recovery rehearsal. |
 
-P1 includes a bounded tree/decomposition editor, detail and review; P2 extends those
-surfaces rather than postponing the first human interface. P0 is preparatory because
-exclusive ownership and recoverable adoption are the evidence P1 rests on. It is not
-presented as a usable tracker. Offline support is a separate checkpoint, not silently
-removed from the agreed scope.
+An optional server transport follows the same contract later. It is not a prerequisite
+hidden in G1 and is not required to close the first serverless outcome. If selected,
+its fenced cutover must pass A25 before use. It must not add a new workflow engine,
+change identifiers or turn PostgreSQL/Git replicas into two writable authorities.
 
-## P0 work packages to turn into tasks after approval
+L1 is useful local planning, not a renamed implementation stub: both interfaces,
+comments/time and a real import path work. Ordered autonomous triage/execution remains
+I1 work because it consumes G1's grant proof. Local records and pending proposals can
+exist before that; no provisional reservation may be presented as ownership.
 
-These are proposed packages with acceptance, not newly opened tracker leaves.
+## Worker-sized packages after the relevant agreement
 
-| Package | Observable criterion | Dependencies |
+These are proposed work packages, not claimed/ready tracker tasks. The eventual tasks
+name their actual stage, scope and evidence. Only refine a later checkpoint when its
+inputs are known; no inventory of invented downstream implementation tasks is opened
+by this documentation PR.
+
+| Package | Independently observable criterion | Actual dependency |
 | --- | --- | --- |
-| P0-A: authority contract and fixture | The same two-client command fixture runs on PGlite and PostgreSQL; actor/session, item revisions and rejected operations are observable through the service. | Accepted coordination choices. |
-| P0-B: reservations and lifecycle | One of two simultaneous claims succeeds; claim racing prerequisite reopen is serializable; transfer/revoke rejects an old attempt; submission does not accept. | P0-A. |
-| P0-C: Git/adoption journal | Kill after durable intent, after proposal commit, after adoption and before/after ref publication; restart converges once, never activates a partial plan or grants unpublished work. Also publish A (R0 → R1), lose its completion, then publish B (R1 → R2): recovery verifies A's exact manifest in the publication chain, finalizes A once and leaves R2 current. A mismatched manifest or unrelated merge ancestor must not pass. | P0-A; can proceed independently of P0-B against the common contract. |
-| P0-D: recovery verdict | Lost replies, duplicate operation IDs, changed payload, permission loss, backup restore with an old client and concurrent cycle creation all yield the specified result or an explicit design failure. | P0-B and P0-C. |
+| M0-A — Common model contract | One reviewed mapping joins catalog identity, work extension, original capture, comments/time, roles/policies and manifest transitions; Jira/YouTrack reuse and deliberate differences are explicit. | Revised concept and current-main inventory. |
+| M0-B — Agreement and compatibility | Maintainer accepts manifest/table rule; invalid-declaration cases, state evolution and current as-is/to-be stable-key seam are specified without temporal-row foreign keys. | M0-A. |
+| L1-A — Local entity/field storage | Create/read/update work and original capture through owner interfaces; configurable values persist without a work-file/definition-commit path. | M0. |
+| L1-B — Human planning plus agent read/commands | Actual wiki intake/tree/detail/decomposition and CLI/MCP planning resolve the same keys; no mandatory agent, criteria or execution approval for human creation. | L1-A; one shared operation contract. |
+| L1-C — Comments and attributed time | Human/agent comments and corrected time survive restart/replay; old records are preserved and effective totals do not double-count. | L1-A; can proceed with L1-B. |
+| L1-D — Early br importer | Immutable source export maps identities, custom data, comments, time and histories; dry run explains every rejected mapping and repeat import is idempotent. | L1-A and agreed mapping; can proceed with L1-B/C. |
+| G1-A — Transport/trust fixture | Two isolated clients, protected dedicated remote ref, authenticated participant/policy basis and deterministic validated prefix; unsupported host enforcement is a visible design failure. | M0 and Q4 candidate, independent of L1 UI. |
+| G1-B — Subtree and queue contention | Parent/child/reparent races, priority/cap races and executor replacement have the specified one-grant outcomes; nothing executes before remote confirmation. | G1-A and agreed Q2/frontier rules. |
+| G1-C — Delivery, checkpoints and recovery | Lost replies, remote success before local commit, duplicate operations, pruning, old client and unsafe restore preserve outcomes and fences. | G1-A; develop alongside G1-B. |
+| G1-D — Mechanism verdict | Repeatable evidence covers positive and negative authorization, remote durability, confidentiality and recovery limits. Admit production claims only if the whole promised contract holds. | G1-B/C. |
+| I1-A — Ordered intake and work | Agent triages at queue position; ready/take applies areas, dependencies, inherited priority, caps and owner-only order exceptions. | L1 and G1. |
+| I1-B — Policy review and merge | Actual C/B/A evidence and verified actors/models govern transitions/merge, including criticality and agreed sole-developer/correction rules. | I1-A and Q3. |
+| I1-C — Recovery surfaces | Executor replacement, explicit subtree release, stale-sync Problems and investigated manual unlock are usable through both surfaces; rejected evidence remains reconcilable. | L1/G1; can proceed alongside I1-B. |
+| O1-A — Scale and fill coexistence | Full fixture, pagination, narrow/zoom/keyboard UI and concurrent fill measurements meet agreed bounds without opening another uncontrolled database writer. | L1/G1/I1 behavior needed by each measured path. |
+| O1-B — Rehearsal and authority switch | Reconcile chosen real source, rehearse freeze/switch/restore, then retire old writers in the accepted cutover. | Import/recovery evidence and explicit migration approval. |
 
-Do not replace the prototype with mocked repositories or a fake arbitration service.
-Use fixtures held/generated by this project, never another private checkout. Record
-which guarantees the real database/runtime could not provide. A failed guarantee
-returns to design, not a weaker acceptance assertion.
+## Scenario-to-checkpoint allocation
 
-## P1 vertical slices to refine after P0
+Scenario IDs describe future observable behavior, not results claimed by the docs.
+A cross-cutting scenario is split explicitly below so a later behavior cannot make an
+earlier checkpoint circular. The full scenario must still pass at its final stage.
 
-- Human creates a definition and sees the same adopted revision through CLI/MCP;
-  incomplete drafts stay non-executable.
-- Human decomposes it into two leaves with criteria and a dependency; stale preview,
-  cycle and unauthorized relationship fail atomically without losing the proposal.
-- Human approves a ready leaf; an authenticated agent claims it and reads exact source
-  context; another agent cannot claim it. No executor is started by madarch.
-- Agent records time/progress and immutable criterion evidence; a human accepts or
-  returns it. Parent review names its integration criterion rather than counting children.
-- Human changes scope or transfers ownership; old-basis/old-generation writes refuse,
-  with retained rejected results and explicit reconciliation.
+| Checkpoint | Required scenario scope |
+| --- | --- |
+| M0 | M01–M07 specify contract/fixtures; executable manifestations are proved in L1/G1/I1. A02/H08 require the shared-rule design, not a claim of a running engine at agreement. |
+| L1 | M01–M07 as applicable to local behavior; H01–H02, H04–H06 local preview/apply, H08–H09 local configuration/owner ordering, H24 local comment/time correction, H28 import, H30 rendered local paths; A01 creation only, A02, A06 local atomicity, A23 bounded local reads, A24 initial fill-contention measurement. |
+| G1 | A03–A08 (including structure/priority/cap races), A11, A16–A20, A22; H04–H07 concurrent/inherited-scope parts, H13–H16, H19 transport/consent fences, H26–H27 protocol recovery. No dependency on completed I1 review UI. |
+| I1 | Full H03, H07 and H09–H27, H31–H32; full A01, A06–A15 and A21 with human/agent interaction. H30 covers the added triage/review/Problems surfaces. G1's mechanism is reused, not replaced by a mock arbiter. |
+| O1 | H28 live-source rehearsal, H29–H30 full-scale/all-surface walk; A19–A20 restore at scale, A23–A24 full fixture, all C01–C14 constraints on the assembled candidate. A25 only if optional server transport is selected. |
 
-These slices include UI, service and agent adapter behavior together. They are not
-separate backend/UI deliveries that leave an unusable scaffold on main. HTTP/CLI/MCP
-share the operation implementation; only adapter-specific conformance is repeated.
+## Early import and safe retirement
 
-## Migration and retirement
+Two sources remain distinct: product Markdown tasks and the br development backlog.
+An importer may support both, but one is not silently substituted for the other.
+Develop the br path in L1; switching a live source is O1's separately approved action.
 
-Two distinct sources must not be conflated: the product's simple Markdown tasks are
-already a madarch feature; the br tracker used to develop the engine is a separately
-chosen migration. The latter is not silently replaced by installing a new engine.
+1. **Capture and map.** Read an immutable export/snapshot. Map source system + source
+   ID to stable work keys; retain original descriptions, authors, times, hierarchy,
+   link types, labels/custom fields, comments, corrections, time entries and evidence.
+   An imported actor/model string is historical attribution, not current credentials
+   or verified different-model review.
+2. **Respect configured workflows.** Map source statuses into the agreed target kind
+   manifest, not a hard-coded draft/open enum. Unmapped values remain explicit
+   reconciliation findings. Legacy closed work retains its actual historical outcome;
+   it is not assigned a newly fabricated acceptance lane or live reservation.
+3. **Do not lose records.** Duplicate identities, bad links, unsupported fields,
+   missing referenced objects and cycles produce source record/key, field and full
+   file/line where available. Preserve rejected material and report counts/checksums;
+   never call a smaller successful subset a full import.
+4. **Rehearse and repeat.** Run the importer twice against the same snapshot. Target
+   identities and effective time totals are unchanged; comments/history do not
+   duplicate. Resolve discovered mapping decisions before cutover, with an explicit
+   report rather than a new implicit default.
+5. **Freeze and switch once.** Stop the chosen source's writes, reconcile its final
+   export and pending operations, take PostgreSQL/transport backups, apply the final
+   mapping and activate the new authority. Retire the old Markdown/status mutations
+   and migrate their callers in this cutover. Preserve stable links through mapping,
+   not a second mutable tracker or bypass alias.
+6. **Recover without two writers.** Before new writes, rollback can restore the source
+   while disabling the new authority. After new writes, freeze again and use an agreed
+   lossless reverse mapping/replay or forward repair. Never overwrite new comments,
+   time or accepted decisions with an old snapshot, and never operate two writable
+   epochs during recovery.
 
-1. **Inventory and dry-run mapping.** Read immutable source snapshots, map product and
-   legacy IDs to stable work IDs, preserve title/body/scope, origins, parentage, gating
-   versus related links, comments, timestamps, historical actors, evidence and time.
-   A historical actor is provenance, not an authenticated new principal.
-2. **Explain semantic differences.** Legacy `open` maps to draft/open only after required
-   fields validate. `in_progress`, `submitted` and `implemented` require reconciliation;
-   they do not fabricate a live reservation. Legacy `closed` imports as historical
-   completion with explicit legacy evidence and no invented reviewer; a person validates
-   it before it can satisfy a newly enforced prerequisite. Deferred work stays deferred
-   by admission/visibility policy, not silently ready.
-3. **Refuse ambiguity.** Missing identities, cycles, dangling references, conflicting
-   statuses or unsupported custom types produce per-item, per-field findings with full
-   source path and line where available. Import neither drops them nor guesses success.
-   The owner chooses their resolution before the authoritative cutover.
-4. **Freeze and switch once.** Stop old writes, settle/export all pending operations,
-   take Git and operational snapshots, import one committed mapping batch, reconcile
-   counts and hashes, then activate the new authority. Update all callers in that
-   same release. Retire legacy task create/close/run mutation routes and direct status
-   writes, retaining their responsibilities in the shared service. Preserve stable
-   links via identity mapping, not a parallel mutable compatibility tracker.
-5. **Rollback without two writers.** Before new writes begin, restore the source and
-   disable the new authority. After new writes begin, freeze again and replay/export
-   all accepted new operations under a reviewed reverse mapping before re-enabling an
-   old writer. If the reverse mapping loses meaning, use forward repair; never restore
-   an old snapshot over newly accepted work. Keep old snapshots read-only for evidence.
+## Fixtures, evidence and truthful admission
 
-A graph rebuild or reset is never the migration/rollback mechanism for reservations,
-accepted operations or time. Back up that state and rehearse recovery separately.
+- Use repositories and records held/generated by the project, not a required private
+  checkout. Fixture both deep and wide hierarchy, different SQL IDs per machine,
+  blockers outside a feature and participants in different areas.
+- G1 uses a real remote with the deployment's actual ref/authentication protections,
+  separate PostgreSQL-backed clients, deterministic concurrency barriers and process
+  crash points. A local bare remote proves only its own supported threat model; it is
+  not evidence that an arbitrary hosted remote enforces product rules.
+- Exercise both sides of lost CAS replies: accepted operation beneath a later prefix
+  and an unaccepted local candidate. Prune covered segments, reconnect an old client,
+  replay accepted time and obsolete executor output, and verify no duplicate or
+  resurrected ownership. Preserve local rejected results.
+- At scale use **10,000 work items**, bounded pages (proposed maximum 100), deep/wide
+  trees, concurrent priority/structure changes and restricted records. Enumerate the
+  snapshot without omission, not just its first page.
+- Measure task interaction during actual fill: create/edit/comment/time/priority/ready,
+  queue wait, transaction time, latency and memory. Agree the responsiveness bound
+  before claiming acceptance; this proposal invents no measured SLA.
+- UI acceptance renders every changed surface at desktop and 360px, keyboard and
+  200% zoom, with click/tap alternatives to drag. Static mockup screenshots are not
+  proof of working controls or runtime accessibility.
+- Acceptance records name the exact source/configuration revision, fixture, steps,
+  output, failure cases, limits and independently verified evidence. A protocol that
+  fails returns to Q4; it is not narrowed to make a test green. Documentation checks
+  in this PR are recorded only as documentation checks.
 
-## Acceptance coverage and evidence
-
-- **Behavior:** C01-C08/C11 of the design through real human/agent commands, including
-  concurrency and failure inputs; shared conformance runs for every adapter.
-- **Visual/interaction:** H01-H16 on actual implemented screens at desktop and 360 px,
-  light/dark where the wiki supports them, 200% zoom, keyboard and click/tap alternatives.
-  The static mockup in this PR is layout evidence only.
-- **Scale:** 10,000 work items with deep/wide decomposition and dependencies; maximum
-  page 100. Measure latency/memory and enumerate the whole snapshot without omissions.
-- **Security:** spoofed actors, expired/revoked credentials, cross-product IDs/cursors,
-  forged owner generation, restricted evidence, unsafe paths/URLs and UI injection.
-- **Durability:** fault injection at the journal/Git/store seams, duplicate delivery,
-  offline reconnect, restore with an old owner, and one authority after recovery.
-- **Cutover:** every legacy field mapped or explicitly refused, no lost history and no
-  remaining mutation path outside the service; C12/C13 and architecture checks.
-- **Review:** independent architecture review before production implementation; then
-  behavior tests, bounded mutation checks on critical guards and end-to-end acceptance
-  according to the repository's existing policy. No check is marked passed by a plan.
-
-The final acceptance record must name actual revisions, fixture sizes, commands,
-rendered surfaces, outcomes and remaining limits. No delivery date or effort forecast
-is promised here: the prototype is what establishes the unknown coordination cost.
+The tracker work proceeds beside fill through the agreed seams. This plan adds no
+executor fleet, model-selection UI, whole Jira clone or requirement to deploy a server
+before the initial local/serverless outcome.

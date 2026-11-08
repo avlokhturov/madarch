@@ -7,12 +7,14 @@ Amends 0026: its live pages rendered from graph nodes without a file are replace
 the Decision says. Amends 0028: agent claims no longer live only in the graph. Builds on 0021 (the
 product repository contract) and 0023 (people's writing is in git, derived indexes are rebuilt).
 
-Pending amendment, 2026-11-04: proposed
-[0035](0035-work-reservations-and-operation-sync.md) qualifies the
-non-rebuildable-Markdown rule for tracker operational records: reservations, live
-work lifecycle and work acceptance would require authoritative transactional
-storage and backup. Authored work definitions would remain in product Git.
-This is not an accepted exception and changes no existing knowledge contract.
+Pending amendment, 2026-11-08: revised
+[0035](0035-work-reservations-and-operation-sync.md), following the maintainer's
+[PR 218 review](https://github.com/shady2k/madarch/pull/218#issuecomment-6705724890),
+qualifies the non-rebuildable-Markdown rule for **all work data**, including the
+original request, definitions, comments, priority, time and coordination records:
+their authority is PostgreSQL. A dedicated Git ref transports operations, not task
+documents. Knowledge prose and other document contracts are not replaced here.
+The historical accepted text remains below; the proposal claims no implemented cutover.
 
 ## Context and problem
 

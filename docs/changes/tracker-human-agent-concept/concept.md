@@ -1,193 +1,210 @@
 # One work system for people and agents
 
-Status: proposal for discussion. Authoring this concept is approved; its architecture,
-implementation, migration and milestone scheduling are not. No product capability is
-changed by this PR. Supporting task: madarch-ae8g; deferred tracker epic: madarch-lk4r.
+Status: revised proposal for discussion; no implementation or acceptance claim.
+Revision basis: [@shady2k's review of PR 218, 2026-11-07](https://github.com/shady2k/madarch/pull/218#issuecomment-6705724890).
+
+## Attribution and scope
+
+This is a proposal contributed by the author of PR 218, @avlokhturov. The original
+request and permission to publish a draft came from the contributor's assistant
+session, **not** from repository owner @shady2k. The earlier wording attributing that
+request and publication permission to the repository owner was incorrect.
+
+The maintainer's review now supplies the product decisions below. The detailed
+manifest, tables and coordination mechanisms remain proposals for agreement and
+proof. This documentation revision neither starts runtime development nor migrates
+live work. Local bookkeeping IDs used by the contributor are explained in
+[the change record](change.md); they are not upstream tracker tasks or approvals.
 
 ## Reading the proposal
 
-- This page: goal, vocabulary, shared behavior and decisions to discuss.
-- [Human interface](human-interface.md): planning, decomposition and review, with a
-  [static screen concept](mockup.html). Download/open the HTML in a browser; it is not
-  a working tracker.
-- [Agent interface](agent-interface.md): proposed operations, examples and recovery.
-- [Design](design.md): existing-system inventory, boundaries and acceptance mapping.
-- [Development plan](development-plan.md): proposed checkpoints, migration and proof.
-- [ADR 0034](../../decisions/0034-human-and-agent-work-interfaces.md): two surfaces,
-  one work model; explicit structured human editing.
-- [ADR 0035](../../decisions/0035-work-reservations-and-operation-sync.md): exclusive
-  ownership, field authority, Git publication and offline synchronization.
+- This page: purpose, shared rules, traceability and remaining agreements.
+- [Model contract](model-contract.md): the proposed uniform manifest rule, table
+  responsibilities and evidence from established tracker models. These are the first
+  two implementation agreements, not accepted DDL or an executable configuration.
+- [Human interface](human-interface.md) and [static mockup](mockup.html): free intake,
+  planning/decomposition, queue, review, comments, time and recovery.
+- [Agent interface](agent-interface.md): the same commands, identities, refusals and
+  synchronization semantics through HTTP, CLI and MCP.
+- [Design](design.md): current source inventory, integration and constraint checks.
+- [Development plan](development-plan.md): local delivery alongside fill, an independent
+  coordination proof and staged integration/cutover.
+- [ADR 0034](../../decisions/0034-human-and-agent-work-interfaces.md): work kinds,
+  interfaces, ordering and product-configured workflow/acceptance.
+- [ADR 0035](../../decisions/0035-work-reservations-and-operation-sync.md): PostgreSQL
+  state, operation transport and subtree reservations.
 
-## Outcome and authorization
+The [2026-10-13 discussion](../../vision/tracker-discussion-2026-10-13.md) remains
+historical source material. Where it or the first PR draft differs from the maintainer's
+2026-11-07 decisions, the newer decisions govern this proposal.
 
-The owner requested on 2026-11-04 a human interface for working with and decomposing
-tasks **and** an agent interface, development documentation and ADRs in a concept PR,
-then discussion of comments before development. This extends the
-[2026-10-13 tracker discussion](../../vision/tracker-discussion-2026-10-13.md).
-The earlier discussion is source material, not an accepted protocol.
+## Outcome
 
-A product engineer can turn a product outcome into reviewable work, organize its
-scope and dependencies, authorize execution and judge results in madarch. An already
-running agent can discover eligible work, take exclusive responsibility, obtain its
-context and submit evidence. Both see the same identities, criteria, ownership and
-history. A person can also execute work under the same ownership rules.
+A person can freely describe a need, inspect its place in the product's work, discuss
+it, decompose it and follow its result inside madarch. An already-running agent can
+triage and execute suitable work through the same model and rules. Neither side needs
+a second task list, an available conversational agent just to create a task, or a
+separate source of truth for status and ownership.
 
-Priority when qualities conflict: no double ownership or silent loss of a person's
-intent; then recoverable disconnected work; then convenience and throughput. A stale
-view must say it is stale. The success demonstration is one person decomposing an
-outcome, two agents competing for one eligible leaf, one delivering it, and a person
-reviewing it, entirely through the two supported surfaces.
+The tracker does not select models, launch agents or manage their processes. External
+executors provide results and verified actor/model identity to the work contract.
+Development and deployment stay outside fill execution, while the product reuses one
+workflow engine, one catalog and the existing storage-owner boundary.
 
-The human interface is not just an agent monitor. Creating, editing, splitting,
-reparenting, prioritizing, linking dependencies and reviewing work are structured
-operations available without chat, a terminal or manual Git editing. Chat remains
-an optional way to propose the same operations. Neither surface edits generated wiki
-prose or raw graph facts. This is a **proposed narrow amendment** to ADR 0033 point 28,
-not a claim that its existing chat-only rule already permits direct task editing.
+## Maintainer decisions and their coverage
 
-## Proposed vocabulary
+The identifiers below refer to the numbered review points, not new upstream tasks.
 
-These definitions belong to this proposal until accepted; the current glossary is
-not silently redefined.
+| ID | Decided requirement | Where the revision makes it concrete |
+| --- | --- | --- |
+| R01 | Every work field lives in PostgreSQL, locally and on a server; priority changes need no commit. | Model contract field authority; ADR 0035; local-stage priority/edit acceptance. |
+| R02 | Serverless Git is segmented operation-file transport on a dedicated ref outside working trees; grants require remote contact; later server changes transport only. | ADR 0035; agent sync contract; G1 concurrent-claim/pruning proof. |
+| R03 | Reservation covers a chosen subtree, refuses another holder inside it and includes newly created children. | Ownership rules below; agent reservation commands; G1 ancestor/descendant cases. |
+| R04 | Any human participant can create work; queued agent triage preserves their words and never silently closes or rewrites the request. | Human intake/review; model request and interpretation records; L1 acceptance. |
+| R05 | No per-task execution approval; the product owner manages the queue, agents propose. | Priority commands and take guards; no execution-approval API. |
+| R06 | Features and debt share priority levels; parallel work shares a level; a configured method such as WSJF only suggests placement. | Model priority policy; whole-feature move and proposal review. |
+| R07 | Ready work is suitable, free and unblocked; lower work cannot bypass suitable higher work; caps, named refusals, owner exceptions and blocker inheritance apply. | Shared ready/take rule; I1 priority/cap races. |
+| R08 | No expiry; authorized human roles investigate/unlock; configurable stale-sync Problems threshold defaults to 24 hours. | Product role/settings data; Problems and recovery scenarios. |
+| R09 | Responsible person and executor agent are distinct; replacing an agent is not reservation transfer. | Model identities; executor assignment and stale-executor fences. |
+| R10 | Configurable A/B/C acceptance, agents as approvers, inherited graph criticality. | Lane requirements below; model policy; I1 evidence/merge checks. |
+| R11 | Each kind has manifest-defined statuses/transitions under one uniform rule and engine, not a fixed first lifecycle. | First manifest agreement; arbitrary-status conformance. |
+| R12 | Start local tracker alongside fill, with catalog fields, comments, time and early br import; learn from mature trackers; link by stable keys; agree manifest and tables first. | Model comparison; M0/L1/G1 plan and current-main inventory. |
 
-| Term | Meaning |
+The additional graph-direction constraint is covered by the design's snapshot/stable-key
+boundary and its fill-contention check: current as-is plus multiple to-be, not a new
+dependency on ADR 0028's temporal version rows.
+
+## Shared vocabulary and identities
+
+| Term | Meaning in this proposal |
 | --- | --- |
-| Work item | Work to achieve an outcome, linked to existing product entities; not a second copy of a requirement or use case. |
-| Definition | Authored scope, criteria and planning relationships at one immutable Git revision. |
-| Leaf / container | An executable work item with no active children / a non-executable item whose outcome is decomposed. |
-| Decomposition | A proposed, reviewed change to a work tree and its dependency edges, adopted as one bounded bundle. |
-| Responsible person | The person accountable for the outcome; not automatically its executing owner or reviewer. |
-| Principal / session | Authenticated person or service identity / one authenticated working session. A display name grants no authority. |
-| Reservation | Durable exclusive permission for one principal/session to execute one leaf, identified by a generation. |
-| Attempt | One execution under a reservation and an immutable basis; transfer or a new claim makes another attempt. |
-| Basis | Definition, referenced source revisions, prerequisite acceptances and execution approval on which work is authorized. |
-| Submission / acceptance | Evidence offered by a worker / a separate authorized judgement of criteria at a specific basis. |
-| Coordination domain | The set of work whose ownership is decided by one authoritative service, locally or on a shared server. |
+| Work item | A catalog entity representing work, with configurable kind, fields and workflow. A task is one kind, not a separate catalog. |
+| Original request | The person's verbatim input, author and capture time, retained independently of later interpretations or editable summaries. |
+| Triage | Queued work that proposes duplicate/contradiction links, discovery, scope, criteria, decomposition and lane; its reasoning remains visible. |
+| Responsible person | The human accountable for the outcome. This planning assignment is not an authentication grant. |
+| Executor agent | The currently designated agent performing work; its sessions/attempts can change without transferring the enclosing reservation. |
+| Reservation holder | The authenticated subject holding the chosen subtree. Internal holder authorization is separate from the two visible assignments. Q2 settles its delegation mapping. |
+| Priority level | An owner-controlled place on the product's common ordering scale. Equal levels permit parallel work where other guards allow it. |
+| Acceptance lane | A product-configured set of evidence, reviewer and merge rules, influenced by inherited criticality. It is not a workflow status. |
+| Stable key | A product/entity identity that survives machine changes, import and local numeric-ID remapping. Human labels and paths are not identity. |
 
-Feature, stage, task, bug and research kinds use the product registry. Milestones and
-releases group outcomes; they are not synonyms for task states. The first supported
-profile uses the lifecycle below. Registry customization may label/refine states but
-must map to these semantic classes and cannot remove ownership or acceptance guards;
-an unsupported profile is refused, not guessed. More general workflow customization
-is not a prerequisite of the first usable slice.
+Work links use `product_key`, `work_key` and stable graph entity keys. A local SQL
+surrogate can accelerate joins but never crosses a replica boundary. Evidence pins
+its source commit, content digest or retained snapshot, not an unqualified current
+numeric graph row.
 
-## Authored model and decomposition
+## Intake, planning and workflow
 
-Every item has a stable product-scoped identity, kind, title, description, bounded
-scope, stable criterion IDs, responsible person, priority, estimates and links to
-product entities at revisions. It may name a parent, gating dependencies, a milestone
-and a release. IDs survive renames and reparenting. Names and paths alone are not IDs.
+Creating a task requires the person's words, not a complete specification. Missing
+scope or criteria is a visible reason for triage, not a reason to lose or reject the
+request. The product's configured intake rule places it in the queue without giving
+its author permission to choose a privileged priority. Agent suggestions are separate
+records; changing the original interpretation, marking a duplicate or closing work is
+an explicit, attributed action under the product workflow.
 
-The hierarchy expresses decomposition, not execution order. A gating edge says
-which accepted result is needed. Neither list order nor parentage silently adds a
-prerequisite. Only accepted prerequisites count; submitted work is not accepted.
-Cross-product gating is out of the first profile: related links may cross products,
-but a remote acceptance is not trusted as a local grant without a later federation
-contract.
+People can structure work themselves through fields, trees and decomposition previews.
+An agent is optional assistance, not the only editor. Decomposition preserves stable
+identity, request history, comments, time and incoming/outgoing dependencies. Parentage
+expresses structure; a typed dependency expresses an execution prerequisite. Neither
+is inferred from list position. Coverage of parent criteria is a review aid, never an
+automatic proof that a parent outcome has been accepted.
 
-A decomposition preview shows the complete before/after bundle: children, criteria
-coverage, residual parent work, changed links, owners and invalidated bases.
-Decomposition keeps the original identity/history as a container. A sibling split
-may instead keep the original as a residual executable leaf, or explicitly cancel
-it if wholly replaced. Neither operation clones acceptance into new items.
-Unknown supplied links, unauthorized edits, self-parenting and dependency/hierarchy
-cycles refuse adoption. Existing criteria must be accounted for; incomplete new
-drafts expose missing scope/criteria without inventing them. Criterion coverage is
-a review aid, not an automated proof that the decomposition is sufficient.
+Each kind declares its own status identifiers, transitions, guards and effects in the
+uniform manifest contract. The service discovers the available actions and uses one
+engine to validate them. There is no mandatory `draft/open/in_progress/submitted`
+profile hidden underneath configurable labels. Readiness, reservation, synchronization
+freshness, evidence validity and acceptance policy are separate facts; the manifest
+can use them as guards without turning each into a hard-coded status.
 
-All definitions in a bundle become active together or none do. Large plans must be
-split into independently meaningful bundles before approval, never truncated by the
-server. A reserved leaf cannot become a container until its reservation is explicitly
-released or revoked. Children never inherit a globally valid execution reservation.
-A person may edit planning data while work is reserved, but adoption shows and
-records the effect on that attempt's basis. There is no last-writer-wins overwrite.
+## Queue ordering and taking work
 
-## Shared lifecycle
+`work.ready` is a permission-scoped observation, not a grant. It shows suitable work
+for the participant's areas, unmet prerequisites, reservation coverage, effective
+priority and any people-per-feature cap. The take operation rechecks the whole
+predicate against the coordinated state, including the absence of suitable higher
+free work. A concurrent priority change, new blocker or claim cannot be bypassed by
+presenting an earlier ready list.
 
-| From | Operation | To and condition |
+Only the product owner changes authoritative priority or grants an explicit exception
+to its order. Agents may suggest a level, including a configured WSJF estimate; they
+cannot turn the suggestion into authority. Moving a feature moves its priority group
+atomically. A blocker temporarily inherits the highest urgency of work it blocks;
+the owner's base level remains recorded so urgency can be recomputed when the
+blocking relation ends. The exact group/level rule is part of the first model agreement.
+
+A refusal identifies the higher suitable work, or a permission-safe explanation if
+its details cannot be shown. A policy exception records who allowed it, its bounded
+scope and the queue/policy basis. It is not the removed per-task approval step under
+a different name: ordinary correctly ordered work needs no individual permission.
+
+## Subtree ownership, executors and disconnects
+
+A take selects a root: a whole feature or a narrower branch. A reservation includes
+all descendants, including children subsequently created offline. Another holder
+cannot claim an ancestor or descendant of that reserved scope. The taker cannot
+reserve a branch containing someone else's work.
+
+Q2's conservative proposal uses the existing ancestor grant rather than overlapping
+reservations. To let another holder take a child, the enclosing reservation must first
+be explicitly released or restructured through an agreed protocol; no silent partial
+delegation is assumed. This is a design choice still to agree, not an extra decision
+attributed to the maintainer.
+
+Replacing an executor fences its old sessions/attempts but keeps the subtree holder.
+Changing the responsible person likewise does not confer authority. Submitting a
+child's result does not silently release the whole branch; release is explicit.
+History retains earlier assignments and rejected late results without presenting them
+as current evidence.
+
+Taking shared work requires remote connection even in the first local/serverless
+version. Previously confirmed holders can continue offline, create children and
+record comments/time/results. Local pending commands are not global grants.
+Reservation age, credential expiry and stale sync do not release ownership. After
+24 hours without sync by default, the Problems page shows an actionable stale-holder
+entry; product and per-item settings cover leave. An authorized human investigates
+and unlocks manually, with a reason and a new fence against the old holder.
+
+## Acceptance by product policy
+
+The maintainer's minimum lane requirements are:
+
+| Lane | Required review/merge rule |
+| --- | --- |
+| C | Green merge request plus review by another agent on another model; an authorized agent may merge. |
+| B | C's checks and independent agent review, plus a person's approval of the merge. |
+| A | A person is mandatory and another responsible person reviews; a lone developer does not need that second responsible person. |
+
+An agent counts as an approver when the policy allows it. Evidence must identify the
+actual reviewer and model; a worker's self-declared model string is not verified
+independence. Human/agent permissions and merge authority are evaluated independently
+of the responsible-person field.
+
+An agent proposes the lane and a person may correct it with visible reasoning.
+Criticality is marked on graph nodes during build and inherited downward; changing
+inside a critical service takes its applicable lane. Q3 must settle mixed-scope lane
+composition, the relation of A's technical checks to B/C, and authority for a policy
+exception. The proposed conservative baseline keeps the strictest applicable floor
+and C's technical evidence for A, without claiming that the review already settled
+those details. Corrections do not silently erase inherited criticality.
+
+## Remaining agreements, not reopened product choices
+
+| ID | Agreement and proposed starting point | Required before |
 | --- | --- | --- |
-| No item | Adopt a structurally valid definition | `draft`; scope/criteria may be incomplete, and no execution approval or reservation is implied. |
-| `draft` | Open | `open`; definition and required fields are valid. |
-| `open` leaf | Claim | `in_progress`; ready predicates and exclusive grant checked in the same transaction. |
-| `in_progress` | Release or administrative revoke | `open`; attempt ends, reservation clears, generation advances. |
-| `in_progress` | Transfer with target acknowledgement | `in_progress`; old attempt ends, one new owner/attempt starts, generation advances. |
-| `in_progress` | Submit evidence | `submitted`; submission stored and ownership cleared atomically. |
-| `open` container | Submit aggregate criterion evidence | `submitted`; authorized review preparation, no execution claim. |
-| `submitted` | Accept | `accepted`; current basis and every criterion judged by an authorized reviewer. |
-| `submitted` | Return with reason | `open`; submission retained; next execution requires another claim. |
-| `accepted` | Reopen with reason and impact preview | `open`; prior acceptance remains in history and dependent bases invalidate. |
-| Any nonterminal state | Cancel with reason and impact preview | `cancelled`; active ownership revoked, no silent cancellation of children. |
+| Q1 | Review the uniform manifest rule and logical table structure in the model contract together; align them with the catalog/fill refactor, using mature tracker concepts. | M0 acceptance and production implementation. |
+| Q2 | Stable holder/delegation identity, replacement of executors and parent-to-child handoff. Proposed baseline: no overlapping claims, explicit enclosing release before another holder takes a child. | G1 coordination verdict and production shared ownership. |
+| Q3 | Lane composition, sole-developer qualification and authorized corrections/exceptions. Preserve the maintainer's A/B/C minimums; stricter composition is a proposal. | I1 automatic acceptance/merge behavior. |
+| Q4 | Prove Git arbitration, authenticated actor binding, remote protection, safe checkpoints/pruning and later server conformance. CAS is a candidate mechanism, not a proven distributed guarantee. | G1 acceptance and any production shared grant. |
 
-Accepted work is reopened before cancellation; cancelled work is terminal in the
-first profile. Recovering its purpose creates explicitly linked new work, not a
-hidden resurrection. A board move requests one of these operations; it cannot set
-a status field directly.
+Storage in PostgreSQL, subtree coverage, free human intake, no per-task approval,
+owner-controlled enforced ordering, non-expiry and configurable workflows are already
+constraints from the maintainer. The next revision must not ask to choose them again.
 
-An accepted item must be explicitly reopened before adopting any change that affects
-its accepted basis: scope, criteria, prerequisites, source pins or decomposition.
-The old acceptance remains historical, never proof of the revised outcome.
-A returned definition proposal retains its rationale and attribution without changing
-the item's lifecycle; it is distinct from returning a submitted execution result.
+## Scope boundary
 
-`ready`, `blocked`, `basis_changed`, publication status and `last_seen` are separate
-observations, not extra lifecycle states. An open leaf is ready only with an active
-complete definition, accepted prerequisites, person-granted execution approval and
-no reservation. A parent is never executable or automatically accepted because all
-its children finished: integration criteria still need evidence and review.
-
-Changing the responsible person does not transfer execution. A stale heartbeat does
-not release a reservation. Submission ends execution but does not accept its result.
-Default review policy prohibits self-review; a product may explicitly allow it for
-a principal that independently holds review permission. The execution approval of
-the first profile is a person's decision, not an agent-created policy.
-
-## Ownership, change and recovery
-
-Reservations cover one leaf, not a repository, document, subtree or all work of an
-agent. They persist through disconnects until release, submit, cancellation or explicit
-transfer/revocation. This cannot physically stop an offline computer; it prevents
-that computer's obsolete actions from changing authoritative state.
-
-Worker commands carry item/definition revisions, attempt, reservation generation
-and basis token. A transfer requires a fresh impact preview, authorized reason and
-the target authenticated session's acknowledgement. If no target is available, an
-administrator revokes instead; the replacement later claims normally.
-
-A changed scope, source, prerequisite acceptance or execution approval invalidates
-the attempt's basis without hiding its reservation. Old-basis submission cannot be
-accepted by fetching a new token. The worker releases; an authorized person reviews
-the change and approval; a fresh claim acknowledges the new basis. Safe stale results
-remain rejected artifacts available for incorporation by a current owner. Reopening
-a prerequisite does not falsely report its dependants as still ready.
-
-Offline clients may continue previously reserved work and retain proposals, children,
-time and evidence locally. They cannot grant shared claims, accept results or transfer
-ownership. Sync reports every operation as accepted, rejected or awaiting a dependency;
-rejection never deletes the local work. A local-only product can have one local
-authority, but disconnected replicas of a shared product cannot each become it.
-
-## Exclusions and boundaries
-
-- No choice of model, process supervisor, agent installation, autonomous code execution
-  or new universal scheduler. Development/deployment executors remain external.
-- No replacement of the graph's entity catalog, raw fact edits or free editing of
-  generated prose. Existing scoped tasks are migrated, not duplicated.
-- No A2A transport selection, Jira bidirectional sync, federation, billing, resource
-  booking or cryptographic role signatures in this first profile.
-- No promise that 10,000 items meet a latency bound: that is the proposed scale fixture,
-  not an observed measurement. Both surfaces use bounded responses.
-- No conversion of this concept into accepted capability specs, activated tracker
-  milestones or ready implementation tasks before review and the owner's go-ahead.
-
-## Decisions to settle in the PR
-
-| Question | Recommendation | Cost / alternative |
-| --- | --- | --- |
-| May people directly edit structured work? | Yes, through the common checked commands; keep generated content agent-mediated. | Explicit exception to ADR 0033. Chat-only planning does not meet the requested interface. |
-| What owns live lifecycle, reservations and acceptance? | Transactional operational store; Git owns definitions, and exported receipts are read-only. | Requires operational backup and changes the broad wording of ADRs 0023/0029; Git-only state cannot provide the proposed shared atomic grant. |
-| Should ownership expire automatically? | No, matching the requested unbounded offline scenario. | Lost clients require explicit recovery. Expiring leases favor availability but require a different offline guarantee. |
-| What is the first usable result? | Human decomposition, agent claim/submission and human acceptance in one vertical slice, after a bounded concurrency prototype. | Not an API-only or UI-only delivery. Full offline synchronization follows as a separately acceptable checkpoint. |
-| Which review policy is the default? | No self-review; explicit product policy may permit a separately authorized reviewer. | Single-person use needs a consciously recorded policy, not a hidden privilege. |
-
-The PR accepts comments on these proposals. Approval of the documentation PR alone
-is not authorization to begin implementation or to migrate the current tracker.
+This package keeps proposed behavior separate from current capability specifications.
+It includes no running tracker, runtime schema, migration execution or coordination
+proof. The static mockup is an illustrative document with inert business controls.
+No executor fleet, model picker, Jira synchronization, billing or cross-product
+federation is added. An external server later replaces transport, not the catalog,
+workflow engine or acceptance rules.

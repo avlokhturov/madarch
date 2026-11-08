@@ -3,12 +3,14 @@
 Status: accepted; partly amended by 0024
 Date: 2026-10-12
 
-Pending amendment, 2026-11-04: proposed
-[0035](0035-work-reservations-and-operation-sync.md) keeps authored work definitions
-in Git but makes lifecycle, reservations, attempts, review decisions and time
-transactional operational data, including in local-only mode. Their receipts in
-Git would be read-only exports, not a second authority. This exception is proposed;
-the accepted decision below is retained unchanged until review.
+Pending amendment, 2026-11-08: revised
+[0035](0035-work-reservations-and-operation-sync.md), following the maintainer's
+[PR 218 review](https://github.com/shady2k/madarch/pull/218#issuecomment-6705724890),
+places **all work data**, including definitions, text, priority, comments and time,
+in PostgreSQL locally and on a server. Git without a server transports segmented
+operations on a dedicated ref; it is not the work-definition authority. The proposed
+work-specific qualification leaves other document contracts intact. The accepted
+historical decision below remains unchanged pending formal acceptance of the revision.
 
 Amends 0009: the server's fact log starts on PostgreSQL directly, with SQLite
 kept for the local mode. Refines 0017 (the product repository as the one
